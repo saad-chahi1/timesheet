@@ -57,21 +57,11 @@ public class NotificationServImp implements MailNotificationService {
                 return new PasswordAuthentication(GmailAccount.Email, GmailAccount.Password);
             }
         });
-
     }
-
-
-
 
     @Override
     @Async
     public void RegistrationNotificationMail(Utilisateur utilisateur) throws MessagingException {
-/*
-        Properties props = new Properties() ;
-        props.put("mail.smtp.auth", "true") ;
-        props.put("mail.smtp.starttls.enable", "true") ;
-        props.put("mail.smtp.host", "smtp.gmail.com") ;
-        props.put("mail.smtp.port", "587") ; */
 
         Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
@@ -149,7 +139,6 @@ public class NotificationServImp implements MailNotificationService {
 
         Transport.send(msg);
     }
-
 
     public void TimesheetSubmitionNotification (Timesheet timesheet) throws MessagingException {
 
@@ -284,7 +273,6 @@ public class NotificationServImp implements MailNotificationService {
 
     }
 
-
     @Override
     public void timehseetApprouveNotification(Timesheet timesheet) throws MessagingException {
 
@@ -344,8 +332,6 @@ public class NotificationServImp implements MailNotificationService {
 
 
     }
-
-
 
     @Override
     public void timesheetRejectionNotification(Timesheet timesheet) throws MessagingException {
@@ -409,7 +395,6 @@ public class NotificationServImp implements MailNotificationService {
         Transport.send(msg);
 
     }
-
 
     public void UnsubmittedNotification( List<String> emails , String period ) throws MessagingException {
         Message msg = new MimeMessage(session);
