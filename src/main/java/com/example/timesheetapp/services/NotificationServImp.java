@@ -6,15 +6,19 @@ import com.example.timesheetapp.entities.*;
 import com.example.timesheetapp.gmailaccount.GmailAccount;
 import com.example.timesheetapp.repositories.EmployeRep;
 import com.example.timesheetapp.repositories.ManagerRepo;
+import com.postmarkapp.postmark.client.ApiClient;
+import com.postmarkapp.postmark.client.exception.PostmarkException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import com.postmarkapp.postmark.client.data.model.message.Message;
 
 import javax.mail.*;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
@@ -23,28 +27,27 @@ import java.util.Properties;
 
 @Service
 public class NotificationServImp implements MailNotificationService {
-
-
     @Autowired
     private ManagerRepo managerRepo ;
 
-
-
     @Autowired
     private EmployeRep employeRep ;
+
+    private final ApiClient apiClient;
 
     Properties props ;
 
     Session session ;
 
-    public NotificationServImp(){
+    public NotificationServImp(ApiClient apiClient) {
+        this.apiClient = apiClient;
 
         this.props = new Properties() ;
        /*gmail google*/
-     //   props.put("mail.smtp.auth", "true") ;
-     //   props.put("mail.smtp.starttls.enable", "true") ;
-     //   props.put("mail.smtp.host", "smtp.gmail.com") ;
-     //   props.put("mail.smtp.port", "587") ;
+        /*props.put("mail.smtp.auth", "true") ;
+        props.put("mail.smtp.starttls.enable", "true") ;
+        props.put("mail.smtp.host", "smtp.gmail.com") ;
+        props.put("mail.smtp.port", "587") ;*/
 
         //outlook
         props.put("mail.smtp.auth", "true") ;
@@ -63,7 +66,9 @@ public class NotificationServImp implements MailNotificationService {
     @Async
     public void RegistrationNotificationMail(Utilisateur utilisateur) throws MessagingException {
 
-        Message msg = new MimeMessage(session);
+        session.setDebug(true);
+
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(utilisateur.getEmail()));
@@ -98,13 +103,51 @@ public class NotificationServImp implements MailNotificationService {
         MimeBodyPart messageBodyPart = new MimeBodyPart();
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
-        Transport.send(msg);
+        Transport.send(msg);*/
+        boolean isMessageSent = false;
+
+        String content = "<html>\n" +
+                "<body>\n" +
+                "<div>Bienvenue sur MyTime ,</div>"+
+                "<br>"+
+                "<div>Votre compte est pr&ecirc;t et vous pouvez commencer &agrave; utiliser MyTime d&egrave;s maintenant</div>"+
+                "<br>"+
+                "<div>Vos identifiants de connexion sont les suivants :</div>"
+                +
+                " <p> \n" +
+                " \n" +
+                " <div>Nom d&#039;utilisateur : "+ utilisateur.getUsername() +" ( Vous pouvez utiliser votre e-mail ) </div>  \n" +
+                " <br>\n" +
+                " <div>Mot de passe : "+utilisateur.getPassword()+"</div> \n" +
+                " <br>\n" +
+                " <strong>Une fois connect&eacute;(e) , Compl&eacute;ter votre profil et cr&eacute;er un nouveau mot de passe de votre choix </strong> \n" +
+                " <br>\n" +
+                " <br>\n" +
+                " <div>Cliquez ici pour acc&eacute;der &agrave; l'application : <a href="+ CLIENT_URL.url+" >MyTime</a></div>\n" +
+                "\n" +
+                "</body>\n" +
+                "</html>";
+
+
+        Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                utilisateur.getEmail(),
+                "CREATION DE VOTRE COMPTE MYTIME",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void ResetPasswordEmail(Utilisateur utilisateur , String token) throws MessagingException {
 
-        Message msg = new MimeMessage(session);
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(utilisateur.getEmail()));
@@ -137,13 +180,49 @@ public class NotificationServImp implements MailNotificationService {
         MimeBodyPart messageBodyPart = new MimeBodyPart();
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
-        Transport.send(msg);
+        Transport.send(msg);*/
+
+        boolean isMessageSent = false;
+
+        String content = "\n" +
+                "<html>\n" +
+                "<body>\n" +
+                "\n" +
+                "<div>Bonjour , </div> \n" +
+                "<br> \n" +
+                "<div>Pas d&#039;inqui&eacute;tudes. Vous pouvez r&eacute;initialiser votre mot de passe MyTime en cliquant sur le lien ci-dessous : </div> \n" +
+                "\n" +
+                "<a href='"+CLIENT_URL.url+"resetpassword/"+token+"'>R&eacute;initialiser le mot de passe</a> \n" +
+                "<br> \n" +
+                "<br>\n" +
+                "<strong>\n" +
+                " Si vous n'avez pas demand&eacute; la r&eacute;initialisation de votre mot de passe, vous pouvez supprimer cet e-mail \n" +
+                "</strong> \n" +
+                "<br> \n" +
+                "<br>\n" +
+                "<div>Cordialement , l&#039;&eacute;quipe MyTime</div>\n" +
+                "\n" +
+                "</body>\n" +
+                "</html>";
+
+        Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                utilisateur.getEmail(),
+                "Réinitialisez votre mot de passe",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void TimesheetSubmitionNotification (Timesheet timesheet) throws MessagingException {
 
-
-        Message msg = new MimeMessage(session);
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         List<Address> adresslist = new ArrayList<>();
@@ -217,14 +296,90 @@ public class NotificationServImp implements MailNotificationService {
         MimeBodyPart messageBodyPart = new MimeBodyPart();
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
-        Transport.send(msg);
+        Transport.send(msg);*/
+
+        boolean isMessageSent = false;
+
+        List<Address> adresslist = new ArrayList<>();
+        String emails = "" ;
+
+        List<Manager> managers = (List<Manager>) managerRepo.findAll();
+        for(int i = 0 ; i < managers.size() ; i++){
+
+            if( i == managers.size() - 1) {
+                emails+=managers.get(i).getEmail();
+                break;
+            }
+            emails+=managers.get(i).getEmail()+",";
+        }
+
+        String[] recipientList = emails.split(",");
+        InternetAddress[] recipientAddress = new InternetAddress[recipientList.length];
+        int counter = 0;
+        for (String recipient : recipientList) {
+            recipientAddress[counter] = new InternetAddress(recipient.trim());
+            counter++;
+        }
+
+        String content = "<html>\n" +
+                "<head>\n" +
+                "<style>\n" +
+                "table, td, th {\n" +
+                "  border: 1px solid black;\n" +
+                "}\n" +
+                "\n" +
+                "table {\n" +
+                "  width: 100%;\n" +
+                "  border-collapse: collapse;\n" +
+                "}\n" +
+                "</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "\n" +
+                "<h2>SEMAINE : <strong>"+timesheet.getDateDebut()+" - "+timesheet.getDateFin()+"</strong></h2>\n" +
+                "\n" +
+                "<table style='width: 100%; border-collapse: collapse; border: 1px solid black;'>\n" +
+                "  <tr>\n" +
+                "    <th style='border: 1px solid black;'>Employ&eacute;</th>\n" +
+                "    <th style='border: 1px solid black;'>Date de d&eacute;but</th> \n" +
+                "    <th style='border: 1px solid black;'>Date de Fin</th> \n" +
+                "    <th style='border: 1px solid black;'>Nombre total d&#039;heures</th> \n" +
+                "    <th style='border: 1px solid black;'>&Eacute;tat</th>\n" +
+                "    \n" +
+                "  </tr>\n" +
+                "  <tr>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getEmploye().getNom() +"</td>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getDateDebut()+"</td> \n" +
+                "    <td style='border: 1px solid black; text-align:center ;'>"+timesheet.getDateFin()+"</td> \n" +
+                "    <td style='border: 1px solid black;text-align : center'>"+timesheet.getTotalduration()+"</td>\n" +
+                "    <td style='border: 1px solid black; text-align : center ;'>En attente d&#039;approbation</td>\n" +
+                "  </tr>\n" +
+                "\n" +
+                "</table>\n" +
+                "\n" +
+                "</body>\n" +
+                "</html>";
+
+        Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                emails,
+                "Une nouvelle feuille de temps à valider !",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
     public void TimesheetNotificationAlert() throws MessagingException {
 
 
-        Message msg = new MimeMessage(session);
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         List<Address> adresslist = new ArrayList<>();
@@ -269,15 +424,58 @@ public class NotificationServImp implements MailNotificationService {
         MimeBodyPart messageBodyPart = new MimeBodyPart();
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
-        Transport.send(msg);
+        Transport.send(msg);*/
 
+        boolean isMessageSent = false;
+
+        String content = "<html> <body> " +
+                "" +
+                "<div>Bonjour " +
+                "" + "<br>" +
+                "</div>\n<div>N&#039;oubliez pas de remplir et de soumettre votre feuille de temps cet apr&egrave;s midi ,</div><br><div>Bonne journ&eacute;e</div>\n "
+                + "<div><strong>MyTime Powered By KBM Consulting</strong></div>" +
+                "</body> </html>" ;
+
+        List<Address> adresslist = new ArrayList<>();
+        String emails = "" ;
+
+        List<Employe> employes = (List<Employe>) employeRep.findAll();
+        for(int i = 0 ; i < employes.size() ; i++){
+
+            if( i == employes.size() - 1) {
+                emails+=employes.get(i).getEmail();
+                break;
+            }
+            emails+=employes.get(i).getEmail()+",";
+        }
+
+        String[] recipientList = emails.split(",");
+        InternetAddress[] recipientAddress = new InternetAddress[recipientList.length];
+        int counter = 0;
+        for (String recipient : recipientList) {
+            recipientAddress[counter] = new InternetAddress(recipient.trim());
+            counter++;
+        }
+
+                Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                        emails,
+                "Timesheet Alert",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void timehseetApprouveNotification(Timesheet timesheet) throws MessagingException {
 
-
-        Message msg = new MimeMessage(session);
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(timesheet.getEmploye().getEmail()));
@@ -328,17 +526,68 @@ public class NotificationServImp implements MailNotificationService {
                 MimeBodyPart messageBodyPart = new MimeBodyPart();
                 messageBodyPart.setContent("Tutorials point email", "text/html");
                 Transport.send(msg);
+*/
+        boolean isMessageSent = false;
 
+        String content = "<html>\n" +
+                "<head>\n" +
+                "<style>\n" +
+                "table, td, th {\n" +
+                "  border: 1px solid black;\n" +
+                "}\n" +
+                "\n" +
+                "table {\n" +
+                "  width: 100%;\n" +
+                "  border-collapse: collapse;\n" +
+                "}\n" +
+                "</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "\n" +
+                "<h2>SEMAINE : <strong>"+timesheet.getDateDebut()+" - "+timesheet.getDateFin()+"</strong></h2>\n" +
+                "\n" +
+                "<table style='width: 100%; border-collapse: collapse; border: 1px solid black;'>\n" +
+                "  <tr>\n" +
+                "    <th style='border: 1px solid black;'>Employ&eacute;</th>\n" +
+                "    <th style='border: 1px solid black;'>Date de d&eacute;but</th> \n" +
+                "    <th style='border: 1px solid black;'>Date de Fin</th> \n" +
+                "    <th style='border: 1px solid black;'>Nombre total d'heures</th> \n" +
+                "    <th style='border: 1px solid black;'>&Eacute;tat</th>\n" +
+                "    \n" +
+                "  </tr>\n" +
+                "  <tr>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getEmploye().getNom() +"</td>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getDateDebut()+"</td> \n" +
+                "    <td style='border: 1px solid black; text-align:center ;'>"+timesheet.getDateFin()+"</td> \n" +
+                "    <td style='border: 1px solid black;text-align : center'>"+timesheet.getTotalduration()+"</td>\n" +
+                "    <td style='border: 1px solid black; text-align : center ; background-color: green ; color : white ;'>Approuv&eacute;e</td>\n" +
+                "  </tr>\n" +
+                "\n" +
+                "\n</table>\n <br> <br>" +
 
+                "\n" +
+                "</body>\n" +
+                "</html>";
 
+                Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                        timesheet.getEmploye().getEmail(),
+                "Votre feuille de temps a été approuvée",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void timesheetRejectionNotification(Timesheet timesheet) throws MessagingException {
 
-
-
-        Message msg = new MimeMessage(session);
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(timesheet.getEmploye().getEmail()));
@@ -393,11 +642,69 @@ public class NotificationServImp implements MailNotificationService {
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
         Transport.send(msg);
+*/
+        boolean isMessageSent = false;
 
+        String content = "<html>\n" +
+                "<head>\n" +
+                "<style>\n" +
+                "table, td, th {\n" +
+                "  border: 1px solid black;\n" +
+                "}\n" +
+                "\n" +
+                "table {\n" +
+                "  width: 100%;\n" +
+                "  border-collapse: collapse;\n" +
+                "}\n" +
+                "</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "\n" +
+                "<h2>SEMAINE : <strong>"+timesheet.getDateDebut()+" - "+timesheet.getDateFin()+"</strong></h2>\n" +
+                "\n" +
+                "<table style='width: 100%; border-collapse: collapse; border: 1px solid black;'>\n" +
+                "  <tr>\n" +
+                "    <th style='border: 1px solid black;'>Employ&eacute;</th>\n" +
+                "    <th style='border: 1px solid black;'>Date de d&eacute;but</th> \n" +
+                "    <th style='border: 1px solid black;'>Date de Fin</th> \n" +
+                "    <th style='border: 1px solid black;'>Nombre total d'heures</th> \n" +
+                "    <th style='border: 1px solid black;'>&Eacute;tat</th>\n" +
+                "    \n" +
+                "  </tr>\n" +
+                "  <tr>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getEmploye().getNom() +"</td>\n" +
+                "    <td style='border: 1px solid black; text-align:center'>"+timesheet.getDateDebut()+"</td> \n" +
+                "    <td style='border: 1px solid black; text-align:center ;'>"+timesheet.getDateFin()+"</td> \n" +
+                "    <td style='border: 1px solid black;text-align : center'>"+timesheet.getTotalduration()+"</td>\n" +
+                "    <td style='border: 1px solid black; text-align : center ; background-color: red ; color : white ;'>Rejet&eacute;e</td>\n" +
+                "  </tr>\n" +
+                "\n" +
+                "\n</table>\n <br> <br>" +
+                "\n<div> <strong> Commentaire </strong> : <div/>"
+                + "<div>" + timesheet.getRaisonRejection() + "</div>" +
+
+                "\n" +
+                "</body>\n" +
+                "</html>";
+
+                Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                        timesheet.getEmploye().getEmail(),
+                "Votre feuille de temps a été rejetée",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void UnsubmittedNotification( List<String> emails , String period ) throws MessagingException {
-        Message msg = new MimeMessage(session);
+
+        /*Message msg = new MimeMessage(session);
         msg.setFrom(new InternetAddress(GmailAccount.Email, false));
 
         List<Address> adresslist = new ArrayList<>();
@@ -453,8 +760,67 @@ public class NotificationServImp implements MailNotificationService {
         messageBodyPart.setContent("Tutorials point email", "text/html");
 
         Transport.send(msg);
+*/
+
+        boolean isMessageSent = false;
+
+        List<Address> adresslist = new ArrayList<>();
+        String useremails = "" ;
 
 
+        for(int i = 0 ; i < emails.size() ; i++){
+
+            if( i == emails.size() - 1) {
+                useremails+=emails.get(i);
+                break;
+            }
+            useremails += emails.get(i)+",";
+        }
+
+        String[] recipientList = useremails.split(",");
+        InternetAddress[] recipientAddress = new InternetAddress[recipientList.length];
+        int counter = 0;
+        for (String recipient : recipientList) {
+            recipientAddress[counter] = new InternetAddress(recipient.trim());
+            counter++;
+        }
+
+        String content = "<html>\n" +
+                "\n" +
+                "<body>\n" +
+                "\n" +
+                " <div> \n" +
+                "    <div> Bonjour ,</div>\n" +
+                " \n" +
+                "    <p>Vous n&#039;avez pas soumis votre feuille de temps pour la p&eacute;riode , \n" + period +
+                "         <p>Merci de la soumettre le plus t&ocirc;t possible</p>\n" +
+                "    </p>\n" +
+                "\n" +
+                "\n" +
+                "    <div>Bonne journ&eacute;e .</div> \n" +
+                "    <br> \n" +
+                "    <br>\n" +
+                "    <div>MyTime powered by KBM Consulting</div> \n" +
+                "\n" +
+                "\n" +
+                " </div>\n" +
+                "\n" +
+                "</body>\n" +
+                "</html>";
+
+                Message message = new Message(
+                "s.chahi@kbm-consulting.com",
+                useremails,
+                        "Feuille de temps non soumise !",
+                content);
+
+        try {
+            if (apiClient.deliverMessage(message)
+                    .getMessageId() != null)
+                isMessageSent = true;
+        } catch (PostmarkException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
